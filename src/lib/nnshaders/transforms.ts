@@ -1,0 +1,191 @@
+import * as tf from "@tensorflow/tfjs";
+
+export function padChannels(tensor: tf.Tensor, nodeName: string): tf.Tensor {
+  // Determine the shape based on whether a shape override is provided
+  const originalShape = tensor.shape;
+
+  // Handle different tensor dimensions
+  let HWCShape: number[];
+  let is1D: boolean = originalShape.length === 1;
+  let is2D: boolean = originalShape.length === 2;
+  let is3D: boolean = originalShape.length === 3;
+  let is4D: boolean = originalShape.length === 4;
+
+  if (is1D) {
+    const originalLength = originalShape[0];
+    const paddedLength = Math.ceil(originalLength / 4) * 4;
+    const numElementsToAdd = paddedLength - originalLength;
+
+    const zeros = tf.zeros([numElementsToAdd]);
+    const paddedTensor = tf.concat([tensor, zeros]);
+
+    return paddedTensor;
+  } else if (is2D) {
+    const originalLength = (originalShape as [number, number])[1];
+    const paddedLength = Math.ceil(originalLength / 4) * 4;
+    const numElementsToAdd = paddedLength - originalLength;
+
+    const zeros = tf.zeros([originalShape[0], numElementsToAdd]);
+    const paddedTensor = tf.concat([tensor, zeros], 1);
+
+    return paddedTensor;
+  } else if (is3D) {
+    HWCShape = originalShape;
+  } else if (is4D) {
+    HWCShape = originalShape.slice(1); // Extract height, width, channels
+  } else {
+    throw new Error("Unsupported tensor dimension. Shape length: " + originalShape.length + " Node name: " + nodeName);
+  }
+
+  const channelPaddedShape = getChannelPaddedShape(HWCShape);
+  const originalChannels = getNumChannel(HWCShape);
+  const paddedChannels = getNumChannel(channelPaddedShape);
+  const numChannelsToAdd = paddedChannels - originalChannels;
+
+  // Create a zero tensor for the channels to add
+  let zeros: tf.Tensor;
+  if (is3D) {
+    zeros = tf.zeros([HWCShape[0], HWCShape[1], numChannelsToAdd]);
+  } else {
+    zeros = tf.zeros([originalShape[0], HWCShape[0], HWCShape[1], numChannelsToAdd]);
+  }
+
+  const paddedTensor = tf.concat([tensor, zeros], tensor.shape.length - 1);
+  return paddedTensor;
+}
+
+
+function getNumChannel(shape: number[]): number {
+  // Assuming channels last - HWC
+  return shape[shape.length - 1];
+}
+
+export function getChannelPaddedShape(originalShape: number[]): number[] {
+  const currentChannels = getNumChannel(originalShape);
+  const channelsToAdd = currentChannels % 4 === 0 ? 0 : 4 - (currentChannels % 4);
+  const newChannels = currentChannels + channelsToAdd;
+  const channelPaddedShape = [originalShape[0], originalShape[1], newChannels];
+
+  return channelPaddedShape;
+}
+
+export function removePadChannels(
+  dataWithPaddedChannels: Float32Array,
+  originalElementCount: number,
+  originalShape: number[],
+  finalShape: number[]): Float32Array {
+
+  const originalChannels = getNumChannel(originalShape);
+  const finalChannels = getNumChannel(finalShape);
+  const numChannelsToRemove = finalChannels - originalChannels;
+
+  if (numChannelsToRemove === 0) {
+    return dataWithPaddedChannels;
+  }
+
+  const dataWithoutPaddedChannels = new Float32Array(originalElementCount);
+
+  let outputIndex = 0; // Index for the output array
+  // Iterate through the original data
+  for (let index = 0; index < dataWithPaddedChannels.length; index++) {
+    // Calculate current channel position in the stride
+    const currentChannelPosition = index % finalChannels;
+
+    // Only copy data if the channel position is less than the number of original channels
+    if (currentChannelPosition < originalChannels) {
+      dataWithoutPaddedChannels[outputIndex] = dataWithPaddedChannels[index];
+      outputIndex++;
+    }
+  }
+
+  return dataWithoutPaddedChannels;
+}
+
+export const conv2dWeightsTransform = (
+  weights: tf.Tensor
+): tf.Tensor => {
+  weights = convertHWCNToNHWC(weights);
+
+  // const zShapeOriginal = weights.shape[3];
+
+  // // @ts-ignore
+  // weights = weights.reshape([weights.shape[2], weights.shape[1], weights.shape[0] * weights.shape[3]]);
+
+  const zShape = weights.shape[3];
+  const xShape = weights.shape[2];
+  const yShape = weights.shape[1];
+  const numFilters = weights.shape[0];
+
+  if (!xShape || !yShape || !zShape) {
+    throw new Error("The shape of the weights tensor is invalid. Got: " + weights.shape);
+  }
+
+  if (zShape % 4 !== 0) {
+    throw new Error(`The number of filters in the Conv2D layer must be divisible by 4. Found ${zShape} filters.`);
+  }
+
+  // Stack the weights along the x axis. 
+  // Also, convert the weights format to PSEUDO channels first: CHWN
+  // - PSEUDO because the last N dimension should have 4 channel elements for each element.
+  const weightsRaw = weights.dataSync();
+  const newWeights = new Float32Array(weights.size);
+  let newIndex = 0;
+
+  // Helper function to calculate the linear index from the multi-dimensional index
+  const getIndex = (n: number, y: number, x: number, z: number, numFilters: number, yShape: number, xShape: number, zShape: number) => {
+    return (((n * yShape + y) * xShape + x) * zShape + z);
+  };
+
+  // XXX: WARNING: The order of the loops is VERY important here.
+  for (let z = 0; z < zShape; z += 4) { // Processing 4 z-values at a time
+    for (let y = 0; y < yShape; y++) {
+      for (let x = 0; x < xShape; x++) {
+        for (let n = 0; n < numFilters; n++) {
+          // const newXValue = x * numFilters + n;
+          // if (newXValue >= xShape * numFilters) {
+          //   throw new Error(`newXValue is out of bounds. Got: ${newXValue}, ${xShape}, ${numFilters}`);
+          // }
+
+          for (let i = 0; i < 4; i++) {
+            const zOffset = z + i;
+
+            if (zOffset >= zShape) {
+              // This should never happen - as the z axis should be padded to be a multiple of 4.
+              throw new Error(`zOffset is out of bounds. Got: ${zOffset}, ${zShape}`);
+            }
+
+            const index = getIndex(n, y, x, zOffset, numFilters, yShape, xShape, zShape);
+            newWeights[newIndex++] = weightsRaw[index];
+          }
+        }
+      }
+    }
+  }
+
+  const newXShape = xShape * numFilters;
+  if (newXShape > 2048 || yShape > 2048 || zShape > 2048 || numFilters > 2048) {
+    throw new Error(`The shape of the weights tensor is too large. Got: ${newXShape}, ${yShape}, ${zShape}, ${numFilters}`);
+  }
+
+  const newWeightsTensor = tf.tensor(newWeights, [yShape, newXShape, zShape], "float32");
+
+  return newWeightsTensor;
+}
+
+// XXX: WARNING: The following function MODIFIES the input tensor.
+export const convertHWCNToNHWC = (weights: tf.Tensor): tf.Tensor => {
+  // Puts the number of filters dimension first (instead of last) i.e. goes from HWCN to NHWC.
+  weights = weights.transpose([3, 0, 1, 2]);
+  weights = padChannels(weights, "conv2dWeightsTransform_dont_know_the_node_name");
+
+  // I don't think this return is necessary, but keeping it for now.
+  return weights;
+}
+
+export const biasWeightsTransform = (weights: tf.Tensor): tf.Tensor => {
+  // Just pad with zeros so the shape is divisible by 4.
+  const numZerosToAdd = 4 - (weights.shape[0] % 4);
+  weights = tf.concat([weights, tf.zeros([numZerosToAdd])]);
+
+  return weights;
+}

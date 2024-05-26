@@ -1,0 +1,151 @@
+import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
+
+// Include a type for single
+export type DataFormat = "NHWC" | "HWC" | "VEC";
+
+export type InitWebGLReturn = {
+  canvas: OffscreenCanvas;
+  gl: WebGL2RenderingContext;
+  maxColorAttachments: number;
+}
+
+export type ProgramInfo = {
+  program: WebGLProgram;
+  attribLocations: {
+    vertexPosition: number;
+  };
+}
+
+// FBO - Frame Buffer Object.
+export type TexturesAndOutputFBO = {
+  inputTextures: WebGLTexture[],
+  outputTextures: WebGLTexture[],
+  weightTextures: WebGLTexture[],
+  frameBuffer: WebGLFramebuffer,
+}
+
+export type OutputShape = number[];
+export type InputShape = number[];
+
+export type ModelType = "GraphModel" | "LayersModel" | "onnx" | "tflite";
+
+export type NNShadersOptions = {
+  // XXX: NOTE: these width and height values may not be necessary? As we're drawing to a texture, not the canvas.
+  canvasWidth: number;
+  canvasHeight: number;
+  viewportMaxSize: number;
+
+  hasBatchDimension: boolean;
+
+  transformations: {
+    padChannels: boolean;
+  }
+  renderTargetBreakpoints: {
+    outputTextureElementCount: number;
+    numberOfRenderTargets: number;
+  }[];
+}
+
+export type WebGLDataBase = {
+  isOperationNode: boolean;
+  nodeName: string;
+  uniformName: string;
+  shape: number[];
+  originalShape: number[];
+  elementCount: number;
+  originalElementCount: number;
+};
+
+export type WebGLDataNonTexture = WebGLDataBase & {
+  type: "float" | "vec2" | "vec3" | "vec4";
+  data: number[];
+};
+
+export type WebGLDataTexture = WebGLDataBase & {
+  // Note: For now, WebGLDataTexture does not have a data field. This is because textures can be too large.
+  type: "sampler2D";
+  texture: WebGLTexture;
+  height: number;
+  width: number;
+};
+
+export type WebGLDataTextureArray = WebGLDataBase & {
+  type: "sampler2DArray";
+  textureArray: WebGLTexture; // Even though it's an array, it's still a single texture - a 3D one.
+  height: number;
+  width: number;
+  numberOfTextures: number;
+};
+
+export type WebGLData = WebGLDataNonTexture | WebGLDataTexture | WebGLDataTextureArray;
+
+export type ArithmeticOpName = "AddV2" | "Mul"
+
+export type SingleInputBasicOpName = "Relu"
+
+// Here I'm creating 2 types for op names, as I feel some of the graph model ops really shouldn't be called ops.
+// For example, Placeholder and Const. These are more like "data" nodes.
+export type OpName = ArithmeticOpName
+  | SingleInputBasicOpName
+  | "Conv2D"
+  | "_FusedConv2D"
+  | "DepthwiseConv2D"
+  | "DepthwiseConv2dNative"
+  | "NotSupported"
+
+export type GraphModelOpNames = OpName | "Placeholder" | "Const"
+
+export type LayersModelLayerClass = "Conv2D"
+  | "DenseLayer"
+  | "InputLayer"
+  | "MaxPooling2DLayer"
+  | "ReLU"
+  | "DepthwiseConv2D"
+  | "Add"
+
+export type Conv2DParams = {
+  strides: number[];
+  pad: "same" | "valid";
+  kernelX: number;
+  kernelY: number;
+  kernelDepth: number;
+  numFilters: number;
+  activation: 'relu' | null;
+  hasBias: boolean;
+}
+
+export type OpParams = Conv2DParams | null;
+
+// Operation nodes have a corresponding WebGL program - with vertex and fragment shaders.
+export type OpNodeWithWebGLData = {
+  node: Node;
+  // Operations have input(s) and output(s) - and possibly weight(s).
+  inputs: (WebGLData | null)[];
+  output: WebGLDataTextureArray | null;
+  weights: WebGLDataTextureArray[];
+  opParams: OpParams;
+  type: OpName;
+  fsSource: string;
+  programInfo?: ProgramInfo;
+};
+
+// export type WebGLData = {
+//   isOperation: boolean;
+//   shape: number[];
+//   texture: WebGLTexture | null;
+//   scalar: number | null;
+// }
+
+export type OpNodeWithWebGLDataMap = Map<string, OpNodeWithWebGLData>;
+export type NodeWebGLDataMap = Map<string, WebGLData>;
+
+export type CustomShapeUpdate = (
+  shapeWithPaddedChannels: number[],
+  currentWidth: number,
+  currentHeight: number,
+  numRenderTargets: number,
+  nodeName: string) => [number, number, number, number]
+
+export type NamedArrayBufferViewMap = {
+  [key: string]: ArrayBufferView;
+};

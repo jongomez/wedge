@@ -1,0 +1,38 @@
+import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
+import { opNodeHasMissingData } from "../../helpers";
+import { ArithmeticOpName, NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLData, OpNodeWithWebGLDataMap } from "../../types";
+import { getWebGLDataElseNull } from "../../webGLData";
+import { getArithmeticOutput } from "./output";
+import { arithmeticWebGLShader } from "./webGLShader";
+
+export function initArithmeticWebGLData(
+  gl: WebGL2RenderingContext,
+  node: Node,
+  nodeWebGLDataMap: NodeWebGLDataMap,
+  opNodeMap: OpNodeWithWebGLDataMap,
+  opName: ArithmeticOpName,
+  options: NNShadersOptions
+): OpNodeWithWebGLData {
+
+  const input1 = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap);
+  const input2 = getWebGLDataElseNull(node.inputs[1], nodeWebGLDataMap, opNodeMap);
+  const inputs = [input1, input2];
+
+  const output = getArithmeticOutput(gl, inputs, node, nodeWebGLDataMap, opNodeMap, options);
+
+  const opNodeWithWebGLData: OpNodeWithWebGLData = {
+    node,
+    inputs,
+    output,
+    type: opName,
+    weights: [],
+    opParams: null,
+    fsSource: ""
+  }
+
+  if (!opNodeHasMissingData(opNodeWithWebGLData)) {
+    opNodeWithWebGLData.fsSource = arithmeticWebGLShader(opNodeWithWebGLData, opName)
+  }
+
+  return opNodeWithWebGLData;
+}
