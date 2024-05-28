@@ -1,9 +1,9 @@
 import { NamedTensorsMap } from "@tensorflow/tfjs-converter/dist/data/types";
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { createOutputTextureArray, createWeightDataTextureArray } from "../../buffersAndTextures";
-import { checkConv2DInputs, getConv2DParams, opNodeHasMissingData } from "../../helpers";
+import { checkConv2DInputs, getConv2DParams, isWebGLDataNonTexture, opNodeHasMissingData } from "../../helpers";
 import { biasWeightsTransform, conv2dWeightsTransform } from '../../transforms';
-import { ModelType, NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLData, OpNodeWithWebGLDataMap, WebGLData } from "../../types";
+import { ModelType, NNShadersOptions, NodeWebGLDataMap, WebGLData, WebGLOpNode, WebGLOpNodeMap } from "../../types";
 import { getWebGLDataElseNull } from "../../webGLData";
 import { getConv2DOutputShape, updateConv2DOutputDimensions } from "./output";
 import { conv2DWebGLShader } from "./webGLShader";
@@ -12,7 +12,7 @@ export function getConv2DOriginalInputShape(
   node: Node,
   input: WebGLData | null,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   weightMap: NamedTensorsMap): number[] | null {
   if (input === null) {
     console.error("getConv2DOriginalInputShape - some data may be missing");
@@ -21,8 +21,14 @@ export function getConv2DOriginalInputShape(
 
   checkConv2DInputs(node.inputs);
 
+  const inputWebGLData = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap);
+
+  if (isWebGLDataNonTexture(inputWebGLData)) {
+    throw new Error("getConv2DOriginalInputShape - inputWebGLData is not a texture");
+  }
+
   // XXX: This should return THE ORIGINAL input shape.
-  const inputShape = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap)?.originalShape;
+  const inputShape = inputWebGLData?.originalShape;
 
   if (!inputShape) {
     console.error("getConv2DOriginalInputShape - some data may be missing");
@@ -36,11 +42,11 @@ export function initConv2DWebGLData(
   gl: WebGL2RenderingContext,
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   weightMap: NamedTensorsMap,
   modelType: ModelType,
   options: NNShadersOptions
-): OpNodeWithWebGLData {
+): WebGLOpNode {
   checkConv2DInputs(node.inputs);
 
   const input = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap);
@@ -74,7 +80,7 @@ export function initConv2DWebGLData(
     weights.push(biasWeightValues);
   }
 
-  const opNodeWithWebGLData: OpNodeWithWebGLData = {
+  const opNode: WebGLOpNode = {
     node,
     inputs: [input],
     output,
@@ -84,9 +90,9 @@ export function initConv2DWebGLData(
     fsSource: "",
   }
 
-  if (!opNodeHasMissingData(opNodeWithWebGLData)) {
-    opNodeWithWebGLData.fsSource = conv2DWebGLShader(opNodeWithWebGLData);
+  if (!opNodeHasMissingData(opNode)) {
+    opNode.fsSource = conv2DWebGLShader(opNode);
   }
 
-  return opNodeWithWebGLData;
+  return opNode;
 }

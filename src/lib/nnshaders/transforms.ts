@@ -72,11 +72,10 @@ export function getChannelPaddedShape(originalShape: number[]): number[] {
 export function removePadChannels(
   dataWithPaddedChannels: Float32Array,
   originalElementCount: number,
-  originalShape: number[],
-  finalShape: number[]): Float32Array {
+  originalShape: number[]): Float32Array {
 
   const originalChannels = getNumChannel(originalShape);
-  const finalChannels = getNumChannel(finalShape);
+  const finalChannels = Math.ceil(originalChannels / 4) * 4;
   const numChannelsToRemove = finalChannels - originalChannels;
 
   if (numChannelsToRemove === 0) {

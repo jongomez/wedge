@@ -41,9 +41,10 @@ export const NNShadersArithmeticTests: FC = () => {
       const tfjsPrediction = model.predict([onesData, onesData]) as tf.Tensor;
 
       const nns = await createNNShaders(model, defaultOptionsWithoutBatchDim);
-      const nnsPrediction = nns.predict([onesDataPaddedArray, onesDataPaddedArray]) as tf.Tensor;
+      const nnsPrediction = nns.predict([onesDataPaddedArray, onesDataPaddedArray]);
+      const nnsPredictionTensor = tf.tensor(nnsPrediction, nns.finalOutputData!.originalShape);
 
-      const comparisonRes = compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPrediction, 0.1);
+      const comparisonRes = compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPredictionTensor, 0.1);
 
       expect(comparisonRes).to.equal(true);
     }} />
@@ -83,9 +84,10 @@ export const NNShadersArithmeticTests: FC = () => {
 
       const nns = await createNNShaders(model, defaultOptionsWithoutBatchDim);
 
-      const nnsPrediction = nns.predict([onesDataPaddedArray, new Float32Array(scalarConstant)]) as tf.Tensor;
+      const nnsPrediction = nns.predict([onesDataPaddedArray, new Float32Array(scalarConstant)]);
+      const nnsPredictionTensor = tf.tensor(nnsPrediction, nns.finalOutputData!.originalShape);
 
-      const comparisonRes = compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPrediction, 0.1);
+      const comparisonRes = compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPredictionTensor, 0.1);
 
       expect(comparisonRes).to.equal(true);
     }} />

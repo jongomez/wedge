@@ -7,7 +7,7 @@ import { getValidShape } from "./helpers";
 import { parseNodeName } from "./model_analysis";
 import { createWebGLProgram } from "./setupShadersAndWebGL";
 import { defaultVsSource } from "./shaderHelpers";
-import { GraphModelOpNames, LayersModelLayerClass, OpNodeWithWebGLData } from "./types";
+import { GraphModelOpNames, LayersModelLayerClass, WebGLOpNode, WebGLOpNodeWithProgram, WebGLOpNodeWithProgramMap } from "./types";
 
 export function graphModelExecuteSetup(
   executor: any,
@@ -63,21 +63,24 @@ export function graphModelExecuteSetup(
   return orderedNodes;
 }
 
-//
-//// XXX: NOTE: This function modifies the passed in opNodeMap.
-export function createOpNodeMapPrograms(opNodeMap: Map<string, OpNodeWithWebGLData>, gl: WebGL2RenderingContext, weightMap: NamedTensorsMap) {
-  opNodeMap.forEach((opNode: OpNodeWithWebGLData) => {
+export function createOpNodeMapPrograms(opNodeMap: Map<string, WebGLOpNode>, gl: WebGL2RenderingContext, weightMap: NamedTensorsMap): WebGLOpNodeWithProgramMap {
+  const opNodeWithProgramMap: WebGLOpNodeWithProgramMap = new Map<string, WebGLOpNodeWithProgram>();
+
+  opNodeMap.forEach((opNode: WebGLOpNode) => {
     if (!opNode.fsSource) {
       // console.error("createOpNodeMapPrograms - opNode.fsSource is not defined. OpNode: " + opNode.node.name);
       return;
     }
 
     const programInfo = createWebGLProgram(gl, defaultVsSource, opNode.fsSource);
-    opNode.programInfo = programInfo;
+    opNodeWithProgramMap.set(opNode.node.name, {
+      opNode,
+      programInfo
+    });
   });
+
+  return opNodeWithProgramMap;
 }
-
-
 
 export function mapLayerClassesToOpName(layerClassName: string): GraphModelOpNames {
   switch (layerClassName as LayersModelLayerClass) {

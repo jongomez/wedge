@@ -53,8 +53,8 @@ export const createAllOutputRealXYZCode = (outputNumberOfTextures: number, outpu
   let allOutputRealXYZ = "";
 
   for (let i = 0; i < outputNumberOfTextures; i++) {
-    const flatCoordOffset = i * output.height * output.width * 4;
-    allOutputRealXYZ += `ivec3 target${i}Output0RealXYZ = convertFlatToHWC3D(outputCoordFlat + ${flatCoordOffset}, outputDims.x, outputDims.y, outputDims.z);
+    const flatCoordOffset = i * output.RGBATextureShape[0] * output.RGBATextureShape[1] * 4;
+    allOutputRealXYZ += `ivec3 target${i}Output0RealXYZ = convertFlatToHWC3D(outputCoordFlat + ${flatCoordOffset}, outputDims.x, outputDims.y, paddedOutputDepth);
     `;
   }
 

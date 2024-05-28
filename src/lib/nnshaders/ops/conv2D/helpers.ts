@@ -33,8 +33,14 @@ export const getConvPadding = (
     //   padY = Math.max(kernelY - (input.shape[1] % strideY), 0);
     // }
 
-    const padAlongX = Math.max(0, (output.shape[0] - 1) * strideX + kernelX - input.shape[0]);
-    const padAlongY = Math.max(0, (output.shape[1] - 1) * strideY + kernelY - input.shape[1]);
+    const outputWidth = output.originalShape[0];
+    const outputHeight = output.originalShape[1];
+    const inputWidth = input.originalShape[0];
+    const inputHeight = input.originalShape[1];
+
+    const padAlongX = Math.max(0, (outputWidth - 1) * strideX + kernelX - inputWidth);
+    const padAlongY = Math.max(0, (outputHeight - 1) * strideY + kernelY - inputHeight);
+
     padX = Math.floor(padAlongX / 2);
     padY = Math.floor(padAlongY / 2);
   } else if (pad !== "valid") {

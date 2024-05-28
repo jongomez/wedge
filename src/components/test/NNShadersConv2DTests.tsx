@@ -45,8 +45,8 @@ async function predictAndCompare(
 
   const nns = await createNNShaders(model, nnShadersOptions || defaultOptionsWithoutBatchDim);
 
-  const inputTensor = createSequentialTensor([1, inputDimension, inputDimension, inputDepth]);
-  // const inputTensor = tf.ones([1, inputDimension, inputDimension, inputDepth]);
+  // const inputTensor = createSequentialTensor([1, inputDimension, inputDimension, inputDepth]);
+  const inputTensor = tf.ones([1, inputDimension, inputDimension, inputDepth]);
 
   // console.log("inputTensor")
   // tf.print(inputTensor.squeeze([0]));
@@ -60,9 +60,10 @@ async function predictAndCompare(
   let channelPaddedAndTexturePadded = new Float32Array(textWidth * textHeight * 4);
   channelPaddedAndTexturePadded.set(channelPaddedInput.dataSync(), 0);
 
-  const nnsPrediction = nns.predict([channelPaddedAndTexturePadded]) as tf.Tensor;
+  const nnsPrediction = nns.predict([channelPaddedAndTexturePadded]);
+  const nnsPredictionTensor = tf.tensor(nnsPrediction, nns.finalOutputData!.originalShape);
 
-  return compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPrediction, 0.1);
+  return compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPredictionTensor, 0.1);
 }
 
 type ConvLayerTestArgs = {
@@ -70,7 +71,7 @@ type ConvLayerTestArgs = {
   inputDepth: number,
   filters: number,
   inputDimension?: number,
-  useInitializers: boolean,
+  useInitializers?: boolean,
   numConvLayers?: number,
   strides?: number,
   nnShadersOptions?: NNShadersOptions
@@ -81,7 +82,7 @@ async function createConvLayerTest({
   inputDepth,
   filters,
   inputDimension = 3,
-  useInitializers,
+  useInitializers = false,
   numConvLayers = 1,
   strides = 1,
   nnShadersOptions = defaultOptionsWithoutBatchDim
@@ -131,27 +132,27 @@ export const NNShadersConv2DTests: FC = () => {
     }} />
 
     <Test title="kernel size 3 & input depth 1 & filters 1" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 1, filters: 1, useInitializers: false });
+      await createConvLayerTest({ kernelSize: 3, inputDepth: 1, filters: 1 });
     }} />
 
     <Test title="kernel size 3 & input depth 1 & filters 2" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 1, filters: 2, useInitializers: false });
+      await createConvLayerTest({ kernelSize: 3, inputDepth: 1, filters: 2 });
     }} />
 
     <Test title="kernel size 3 & input depth 1 & filters 6" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 1, filters: 6, useInitializers: false });
+      await createConvLayerTest({ kernelSize: 1, inputDepth: 1, filters: 6 });
     }} />
 
-    <Test title="kernel size 3 & input depth 5 & filters 2" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 5, filters: 2, useInitializers: false });
+    <Test title="kernel size 3 & input depth 5 & filters 1" fn={async () => {
+      await createConvLayerTest({ kernelSize: 3, inputDepth: 5, filters: 1 });
     }} />
 
     <Test title="kernel size 3 & input depth 5 & filters 6" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 5, filters: 6, useInitializers: false });
+      await createConvLayerTest({ kernelSize: 3, inputDepth: 5, filters: 6 });
     }} />
 
     <Test title="kernel size 3 & input depth 10 & filters 10" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 10, filters: 10, useInitializers: false });
+      await createConvLayerTest({ kernelSize: 3, inputDepth: 10, filters: 10 });
     }} />
 
     <Test title="RENDER TARGETS - 2 render targets with inputDimension 3" fn={async () => {
@@ -162,7 +163,7 @@ export const NNShadersConv2DTests: FC = () => {
         ]
       };
       await createConvLayerTest({
-        kernelSize: 3, inputDepth: 3, filters: 1, inputDimension: 3, useInitializers: false,
+        kernelSize: 3, inputDepth: 3, filters: 1, inputDimension: 3,
         nnShadersOptions
       });
     }} />
@@ -175,22 +176,22 @@ export const NNShadersConv2DTests: FC = () => {
         ]
       };
       await createConvLayerTest({
-        kernelSize: 3, inputDepth: 3, filters: 1, inputDimension: 64, useInitializers: false,
+        kernelSize: 3, inputDepth: 3, filters: 1, inputDimension: 64,
         nnShadersOptions
       });
     }} />
 
     <Test title="stride 3 test" fn={async () => {
-      await createConvLayerTest({ kernelSize: 3, inputDepth: 3, filters: 1, inputDimension: 5, useInitializers: false, strides: 3 });
+      await createConvLayerTest({ kernelSize: 3, inputDepth: 3, filters: 1, inputDimension: 5, strides: 3 });
     }} />
 
     <Test title="3 sequential convs kernel size 1" fn={async () => {
-      await createConvLayerTest({ kernelSize: 1, inputDepth: 3, filters: 3, inputDimension: 10, useInitializers: false, numConvLayers: 3, strides: 3 });
+      await createConvLayerTest({ kernelSize: 1, inputDepth: 3, filters: 3, inputDimension: 10, numConvLayers: 3, strides: 3 });
     }} />
 
     <Test title="3 sequential convs kernel size 3" fn={async () => {
       await createConvLayerTest({
-        kernelSize: 3, inputDepth: 3, filters: 3, inputDimension: 3, useInitializers: false,
+        kernelSize: 3, inputDepth: 3, filters: 3, inputDimension: 3,
         numConvLayers: 3, strides: 3
       });
     }} />

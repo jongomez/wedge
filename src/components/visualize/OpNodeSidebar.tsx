@@ -1,8 +1,8 @@
-import { OpNodeWithWebGLData } from "@/lib/nnshaders/types";
+import { WebGLOpNode } from "@/lib/nnshaders/types";
 import { FC } from "react";
 
 type OpNodeSidebarProps = {
-  opNode: OpNodeWithWebGLData | null;
+  opNode: WebGLOpNode | null;
   onClose: () => void;
 };
 

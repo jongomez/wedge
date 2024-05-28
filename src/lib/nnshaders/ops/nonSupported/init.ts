@@ -1,14 +1,14 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
-import { NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLData, OpNodeWithWebGLDataMap, WebGLData } from "../../types";
+import { NNShadersOptions, NodeWebGLDataMap, WebGLData, WebGLOpNode, WebGLOpNodeMap } from "../../types";
 import { getWebGLDataElseNull } from "../../webGLData";
 
 export function initNotSupportedOpWebGLData(
   gl: WebGL2RenderingContext,
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   options: NNShadersOptions
-): OpNodeWithWebGLData {
+): WebGLOpNode {
 
   let inputs: (WebGLData | null)[] = [];
 
@@ -17,7 +17,7 @@ export function initNotSupportedOpWebGLData(
     inputs.push(currentInputWebGLData);
   }
 
-  const opNodeWithWebGLData: OpNodeWithWebGLData = {
+  const webGLOpNode: WebGLOpNode = {
     node,
     inputs: inputs,
     output: null,
@@ -27,5 +27,5 @@ export function initNotSupportedOpWebGLData(
     fsSource: "",
   }
 
-  return opNodeWithWebGLData;
+  return webGLOpNode;
 }

@@ -1,18 +1,18 @@
 import { NNShaders } from "@/lib/nnshaders/NNShaders";
 import { opNodeHasMissingData } from "@/lib/nnshaders/helpers";
-import { NNShadersOptions, OpNodeWithWebGLData } from "@/lib/nnshaders/types";
+import { NNShadersOptions, WebGLOpNode } from "@/lib/nnshaders/types";
 import { Model } from "@/lib/types";
 import { FC, useState } from "react";
 import { OpNodeSidebar } from "./OpNodeSidebar";
 
 
 type ViewOpNodeProps = {
-  opNode: OpNodeWithWebGLData;
+  opNode: WebGLOpNode;
   onClick: () => void;
   isActive: boolean;
 }
 
-const getStateCSSClass = (opNode: OpNodeWithWebGLData) => {
+const getStateCSSClass = (opNode: WebGLOpNode) => {
   if (opNode.type === "NotSupported") {
     return "not-supported";
   } else if (opNodeHasMissingData(opNode)) {
@@ -26,7 +26,7 @@ const ViewOpNode: FC<ViewOpNodeProps> = ({ opNode, isActive, onClick }) => {
   const stateCSSClass = getStateCSSClass(opNode);
   const activeCSSClass = isActive ? "active-node" : "";
   const outputOriginalShape = opNode.output?.originalShape.join(", ");
-  const outputTextureShape = opNode.output?.shape.join(", ");
+  const outputTextureShape = opNode.output?.RGBATextureShape.join(", ");
 
   return (
     <div className={"card model-visualizer-node " + stateCSSClass + " " + activeCSSClass} onClick={onClick}>
@@ -60,9 +60,9 @@ type ModelVisualizeProps = {
 export const ModelVisualize: FC<ModelVisualizeProps> = ({
   model,
   nnShadersOptions }) => {
-  const [selectedOpNode, setSelectedOpNode] = useState<OpNodeWithWebGLData | null>(null);
+  const [selectedOpNode, setSelectedOpNode] = useState<WebGLOpNode | null>(null);
 
-  const handleNodeClick = (opNode: OpNodeWithWebGLData) => {
+  const handleNodeClick = (opNode: WebGLOpNode) => {
     if (opNode === selectedOpNode) {
       setSelectedOpNode(null);
     } else {

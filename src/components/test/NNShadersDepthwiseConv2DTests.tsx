@@ -59,9 +59,10 @@ async function predictAndCompare(
   let channelPaddedAndTexturePadded = new Float32Array(textWidth * textHeight * 4);
   channelPaddedAndTexturePadded.set(channelPaddedInput.dataSync(), 0);
 
-  const nnsPrediction = nns.predict([channelPaddedAndTexturePadded]) as tf.Tensor;
+  const nnsPrediction = nns.predict([channelPaddedAndTexturePadded]);
+  const nnsPredictionTensor = tf.tensor(nnsPrediction, nns.finalOutputData!.originalShape);
 
-  return compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPrediction, 0.1);
+  return compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPredictionTensor, 0.1);
 }
 
 type DepthwiseConvLayerTestArgs = {

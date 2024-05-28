@@ -1,6 +1,6 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { opNodeHasMissingData } from "../../helpers";
-import { NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLData, OpNodeWithWebGLDataMap, SingleInputBasicOpName } from "../../types";
+import { NNShadersOptions, NodeWebGLDataMap, SingleInputBasicOpName, WebGLOpNode, WebGLOpNodeMap } from "../../types";
 import { getWebGLDataElseNull } from "../../webGLData";
 import { getSingleInputBasicOutput } from "./output";
 import { singleInputBasicWebGLShader } from "./webGLShader";
@@ -9,10 +9,10 @@ export function initSingleInputBasicWebGLData(
   gl: WebGL2RenderingContext,
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   opName: SingleInputBasicOpName,
   options: NNShadersOptions
-): OpNodeWithWebGLData {
+): WebGLOpNode {
   if (node.inputs.length !== 1) {
     throw new Error(`Node ${node.name} has ${node.inputs.length} inputs, expected 1`);
   }
@@ -20,7 +20,7 @@ export function initSingleInputBasicWebGLData(
   const input = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap);
   const output = getSingleInputBasicOutput(gl, node, nodeWebGLDataMap, opNodeMap, opName, options);
 
-  const opNodeWithWebGLData: OpNodeWithWebGLData = {
+  const opNode: WebGLOpNode = {
     node,
     inputs: [input],
     output,
@@ -30,9 +30,9 @@ export function initSingleInputBasicWebGLData(
     fsSource: "",
   }
 
-  if (!opNodeHasMissingData(opNodeWithWebGLData)) {
-    opNodeWithWebGLData.fsSource = singleInputBasicWebGLShader(opNodeWithWebGLData, opName)
+  if (!opNodeHasMissingData(opNode)) {
+    opNode.fsSource = singleInputBasicWebGLShader(opNode, opName)
   }
 
-  return opNodeWithWebGLData;
+  return opNode;
 }

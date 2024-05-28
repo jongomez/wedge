@@ -1,13 +1,13 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { createOutputTextureArray } from "../../buffersAndTextures";
-import { NNShadersOptions, NodeWebGLDataMap, OpName, OpNodeWithWebGLDataMap, WebGLDataTextureArray } from "../../types";
-import { getWebGLDataElseNull } from "../../webGLData";
+import { NNShadersOptions, NodeWebGLDataMap, OpName, WebGLDataTextureArray, WebGLOpNodeMap } from "../../types";
+import { getWebGLDataElseNull, getWebGLOpOutputOriginalShape } from "../../webGLData";
 
 export function getSingleInputBasicOutput(
   gl: WebGL2RenderingContext,
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   opName: OpName,
   options: NNShadersOptions): WebGLDataTextureArray | null {
   const inputData = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap);
@@ -17,7 +17,9 @@ export function getSingleInputBasicOutput(
     return null;
   }
 
-  const output = createOutputTextureArray(gl, inputData?.originalShape, options, node.name);
+  let outputOriginalShape = getWebGLOpOutputOriginalShape(node, nodeWebGLDataMap, opNodeMap);
+
+  const output = createOutputTextureArray(gl, outputOriginalShape, options, node.name);
 
   return output;
 }

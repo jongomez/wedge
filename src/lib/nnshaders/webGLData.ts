@@ -1,14 +1,14 @@
 import { NamedTensorsMap } from "@tensorflow/tfjs-converter/dist/data/types";
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { convertShapeToTexture2DShape, createTextureArray, getElementCount, getFromWeightMap, handleTextureUniforms } from "./buffersAndTextures";
-import { isWebGLDataNonTexture, isWebGLDataTextureArray } from "./helpers";
+import { isWebGLDataNonTexture, isWebGLDataTexture, isWebGLDataTextureArray } from "./helpers";
 import { initArithmeticWebGLData } from "./ops/arithmetic/init";
 import { initConv2DWebGLData } from "./ops/conv2D/init";
 import { initDepthwiseConv2DWebGLData } from "./ops/depthwiseConv2D/init";
 import { initNotSupportedOpWebGLData } from "./ops/nonSupported/init";
 import { initReluWebGLData } from "./ops/relu/init";
 import { padChannels } from "./transforms";
-import { ModelType, NNShadersOptions, NodeWebGLDataMap, OpName, OpNodeWithWebGLData, OpNodeWithWebGLDataMap, WebGLData, WebGLDataNonTexture } from "./types";
+import { ModelType, NNShadersOptions, NodeWebGLDataMap, OpName, WebGLData, WebGLDataNonTexture, WebGLOpNode, WebGLOpNodeMap, WebGLOpNodeWithProgram } from "./types";
 /*
 
 AddV2 case:
@@ -42,15 +42,10 @@ export function getNonOpWebGLData(
     }
 
     return {
-      type: "float",
-      isOperationNode: false,
+      webGLType: "float",
       nodeName: node.name,
       data: [data[0]],
-      shape: [],
       uniformName: "uInput_" + (++inputCount),
-      elementCount: 1,
-      originalShape: [],
-      originalElementCount: 1,
     } as WebGLDataNonTexture
   } else {
     if (node.name === "sklçafaçsd") {
@@ -71,23 +66,19 @@ export function getNonOpWebGLData(
     const textureArray = createTextureArray(gl, width, height, numberOfTextures, node.name, data as Float32Array);
 
     return {
-      type: "sampler2DArray",
-      textureArray: textureArray,
-      isOperationNode: false,
+      webGLType: "sampler2DArray",
+      texture: textureArray,
       nodeName: node.name,
-      shape: weightMapTensor.shape,
+      RGBATextureShape: [width, height, numberOfTextures, 4],
       uniformName: "uInput_" + (++inputCount),
-      width,
-      height,
-      numberOfTextures,
-      elementCount: width * height * numberOfTextures * 4,
+      RGBATextureElementCount: width * height * numberOfTextures * 4,
       originalElementCount: getElementCount(originalShape),
       originalShape,
     }
   }
 }
 
-export function getWebGLDataElseNull(node: Node, nodeWebGLDataMap: NodeWebGLDataMap, opNodeMap: OpNodeWithWebGLDataMap): WebGLData | null {
+export function getWebGLDataElseNull(node: Node, nodeWebGLDataMap: NodeWebGLDataMap, opNodeMap: WebGLOpNodeMap): WebGLData | null {
   // 1st try - get from nodeWebGLDataMap. This map has constants and placeholders.
   let webGLData = nodeWebGLDataMap.get(node.name) as WebGLData | null | undefined;
 
@@ -104,7 +95,7 @@ export function getWebGLDataElseNull(node: Node, nodeWebGLDataMap: NodeWebGLData
 }
 
 type InitWebGLDataReturn = {
-  opNodeMap: OpNodeWithWebGLDataMap;
+  opNodeMap: WebGLOpNodeMap;
   nodeWebGLDataMap: NodeWebGLDataMap;
 }
 
@@ -114,7 +105,7 @@ export function initWebGLData(
   orderedNodes: Node[],
   modelType: ModelType,
   options: NNShadersOptions): InitWebGLDataReturn {
-  const opNodeMap: OpNodeWithWebGLDataMap = new Map<string, OpNodeWithWebGLData>();
+  const opNodeMap: WebGLOpNodeMap = new Map<string, WebGLOpNode>();
   const nodeWebGLDataMap: NodeWebGLDataMap = new Map<string, WebGLData>();
 
   for (const node of orderedNodes) {
@@ -129,17 +120,17 @@ export function initWebGLData(
     }
 
     // Step 2 - handle operation nodes. For example: adds, convolutions, etc.
-    let opNodeWithWebGLData: OpNodeWithWebGLData | null = null;
+    let opNode: WebGLOpNode | null = null;
     let opName: OpName = node.op as OpName;
 
     switch (opName) {
       case "Mul":
       case "AddV2":
-        opNodeWithWebGLData = initArithmeticWebGLData(gl, node, nodeWebGLDataMap, opNodeMap, opName, options);
+        opNode = initArithmeticWebGLData(gl, node, nodeWebGLDataMap, opNodeMap, opName, options);
         break;
       case "Conv2D":
       case "_FusedConv2D":
-        opNodeWithWebGLData = initConv2DWebGLData(
+        opNode = initConv2DWebGLData(
           gl,
           node,
           nodeWebGLDataMap,
@@ -149,11 +140,11 @@ export function initWebGLData(
           options);
         break;
       case "Relu":
-        opNodeWithWebGLData = initReluWebGLData(gl, node, nodeWebGLDataMap, opNodeMap, options);
+        opNode = initReluWebGLData(gl, node, nodeWebGLDataMap, opNodeMap, options);
         break;
       case "DepthwiseConv2dNative":
       case "DepthwiseConv2D":
-        opNodeWithWebGLData = initDepthwiseConv2DWebGLData(gl,
+        opNode = initDepthwiseConv2DWebGLData(gl,
           node,
           nodeWebGLDataMap,
           opNodeMap,
@@ -162,13 +153,13 @@ export function initWebGLData(
           options);
         break;
       default:
-        opNodeWithWebGLData = initNotSupportedOpWebGLData(gl, node, nodeWebGLDataMap, opNodeMap, options);
+        opNode = initNotSupportedOpWebGLData(gl, node, nodeWebGLDataMap, opNodeMap, options);
         console.error("initWebGLData - operation not supported: " + node.op);
         break;
     }
 
-    if (!opNodeWithWebGLData) {
-      throw new Error("initWebGLData - opNodeWithWebGLData is null.");
+    if (!opNode) {
+      throw new Error("initWebGLData - opNode is null.");
     }
 
     // Check if the opNodeMap already has this node. If so, throw an error.
@@ -176,7 +167,7 @@ export function initWebGLData(
       throw new Error("initWebGLData - opNodeMap already has node: " + node.name);
     }
 
-    opNodeMap.set(node.name, opNodeWithWebGLData);
+    opNodeMap.set(node.name, opNode);
   }
 
   return { opNodeMap, nodeWebGLDataMap };
@@ -185,22 +176,18 @@ export function initWebGLData(
 
 export function updateUniformsForProgram(
   gl: WebGL2RenderingContext,
-  opNode: OpNodeWithWebGLData,
+  opNodeWithProgram: WebGLOpNodeWithProgram,
   inputTensorNames: Set<string>,
   inputRawData: ArrayBufferView[],
   options: NNShadersOptions) {
-  if (!opNode.programInfo) {
-    throw new Error("updateUniformsForProgram - opNode.programInfo is null.");
-  }
-
-  const programInfo = opNode.programInfo;
+  const programInfo = opNodeWithProgram.programInfo;
   let textureUnitIndex = 0; // Start from texture unit 0
 
   // Bind input textures.
   // console.log("opNode.node.name", opNode.node.name);
 
   let inputIndex = 0;
-  opNode.inputs.forEach(opInput => {
+  opNodeWithProgram.opNode.inputs.forEach(opInput => {
     if (isWebGLDataTextureArray(opInput)) {
       // Handle initial input texture differently - as this texture's data may change every time we run the program.
       if (inputTensorNames.has(opInput.nodeName)) {
@@ -218,16 +205,16 @@ export function updateUniformsForProgram(
   });
 
   // Bind weight texture if it exists.
-  opNode.weights.forEach(weights => {
+  opNodeWithProgram.opNode.weights.forEach(weights => {
     handleTextureUniforms(gl, weights, textureUnitIndex, programInfo, null);
     textureUnitIndex++;
   });
 
   // Now handle non-texture types if any.
-  opNode.inputs.forEach(input => {
-    const location = gl.getUniformLocation(programInfo.program, input.uniformName);
+  opNodeWithProgram.opNode.inputs.forEach(input => {
+    const location = gl.getUniformLocation(programInfo.program, input!.uniformName);
     if (isWebGLDataNonTexture(input)) {
-      switch (input.type) {
+      switch (input.webGLType) {
         case 'float':
           gl.uniform1f(location, input.data[0]);
           break;
@@ -243,5 +230,25 @@ export function updateUniformsForProgram(
       }
     }
   });
+}
+
+// For ops with multiple inputs, where the output original shape is equal to one of the inputs.
+export function getWebGLOpOutputOriginalShape(
+  node: Node,
+  nodeWebGLDataMap: NodeWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
+): number[] {
+  let originalShape: number[] = [];
+
+  for (const input of node.inputs) {
+    let webGLData = getWebGLDataElseNull(input, nodeWebGLDataMap, opNodeMap);
+
+    if (isWebGLDataTexture(webGLData) || isWebGLDataTextureArray(webGLData)) {
+      originalShape = webGLData.originalShape;
+      break;
+    }
+  }
+
+  return originalShape;
 }
 

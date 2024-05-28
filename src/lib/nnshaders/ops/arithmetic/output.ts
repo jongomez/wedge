@@ -1,16 +1,15 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { createOutputTextureArray } from "../../buffersAndTextures";
-import { NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLDataMap, WebGLData, WebGLDataTextureArray } from "../../types";
-import { getWebGLDataElseNull } from "../../webGLData";
+import { NNShadersOptions, NodeWebGLDataMap, WebGLData, WebGLDataTextureArray, WebGLOpNodeMap } from "../../types";
+import { getWebGLOpOutputOriginalShape } from "../../webGLData";
 
 export function getArithmeticOutput(
   gl: WebGL2RenderingContext,
   inputs: (WebGLData | null)[],
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   options: NNShadersOptions): WebGLDataTextureArray | null {
-  let outputOriginalShape: number[] = [];
 
   if (node.inputs.length !== 2 || inputs.length !== 2) {
     throw new Error("Expected 2 inputs for Mul or AddV2");
@@ -21,15 +20,7 @@ export function getArithmeticOutput(
     return null;
   }
 
-  for (const input of node.inputs) {
-    let webGLData = getWebGLDataElseNull(input, nodeWebGLDataMap, opNodeMap);
-
-    if (webGLData?.shape.length) {
-      outputOriginalShape = webGLData.originalShape;
-    }
-  }
-
-
+  let outputOriginalShape = getWebGLOpOutputOriginalShape(node, nodeWebGLDataMap, opNodeMap);
 
   const output = createOutputTextureArray(gl, outputOriginalShape, options, node.name);
 

@@ -1,9 +1,9 @@
 import { loop } from "../../helpers";
 import { createActivationCode, createAllOutputRealXYZCode, createInitResultsCode, createRenderTargetFinalCode, createRenderTargetLayoutsCode, fsHeader, resultVarName, weightsVarName } from "../../shaderHelpers";
-import { Conv2DParams, OpNodeWithWebGLData, WebGLDataTextureArray } from "../../types";
+import { Conv2DParams, WebGLDataTextureArray, WebGLOpNode } from "../../types";
 import { getConvPadding } from "../conv2D/helpers";
 
-export const depthwiseConv2DWebGLShader = (opNode: OpNodeWithWebGLData): string => {
+export const depthwiseConv2DWebGLShader = (opNode: WebGLOpNode): string => {
   const {
     strides,
     pad,
@@ -19,7 +19,11 @@ export const depthwiseConv2DWebGLShader = (opNode: OpNodeWithWebGLData): string 
   const output = opNode.output;
 
   if (!weights || weights.length < 1) {
-    throw new Error("Conv2D operation must have kernel weights");
+    throw new Error("Depthwise conv2D operation must have kernel weights");
+  }
+
+  if (!output) {
+    throw new Error("Depthwise conv2D operation must have an output");
   }
 
   const strideX = strides[0];
@@ -29,10 +33,8 @@ export const depthwiseConv2DWebGLShader = (opNode: OpNodeWithWebGLData): string 
   const inputUniform = `uniform mediump sampler2DArray ${input.uniformName};`;
   const weightsUniform = `uniform mediump sampler2DArray ${weights[0].uniformName};`
   const biasWeightsUniform = weights.length > 1 ? `uniform mediump sampler2DArray ${weights[1].uniformName};` : '';
-  const outputSpatialSize = output.shape[0] * output.shape[1];
 
-  const outputNumberOfTextures = output.numberOfTextures;
-  console.log("outputNumberOfTextures", outputNumberOfTextures);
+  const outputNumberOfTextures = output.RGBATextureShape[2];
 
   let biasAddCode = "";
   if (weights.length > 1) {
@@ -47,33 +49,37 @@ export const depthwiseConv2DWebGLShader = (opNode: OpNodeWithWebGLData): string 
   }
 
   const paddedKernelDepth = Math.ceil(kernelDepth / 4) * 4;
+  const paddedOutputDepth = Math.ceil(output.originalShape[2] / 4) * 4;
+  const paddedInputDepth = Math.ceil(input.originalShape[2] / 4) * 4;
   // const singlePaddedKernelElementCount = kernelX * kernelY * paddedKernelDepth;
   // const allPaddedKernelsElementCount = singlePaddedKernelElementCount * numFilters;
 
   // The kernel weights are concatted in the x direction.
   // So if we multiply the kernel's x dimension by the number of filters, we should get the total width of the kernel texture.
-  if (kernelX * numFilters != weights[0].width) {
-    throw new Error("kernelX * numFilters != weights[0].width");
+  if (kernelX * numFilters != weights[0].RGBATextureShape[0]) {
+    throw new Error("kernelX * numFilters != weights[0].RGBATextureShape[0]");
   }
 
   const hasBias = weights.length > 1;
 
-  const constants = `const ivec3 inputDims = ivec3(${input.shape[0]}, ${input.shape[1]}, ${input.shape[2]}); 
-const ivec3 inputTextureArrayDims = ivec3(${input.width}, ${input.height}, ${input.numberOfTextures});
+  const constants = `const ivec3 inputDims = ivec3(${input.originalShape[0]}, ${input.originalShape[1]}, ${input.originalShape[2]}); 
+const ivec3 inputTextureArrayDims = ivec3(${input.RGBATextureShape[0]}, ${input.RGBATextureShape[1]}, ${input.RGBATextureShape[2]});
 const ivec3 paddedKernelDims = ivec3(${kernelX}, ${kernelY}, ${paddedKernelDepth});
-const ivec3 singleKernelTextureDims = ivec3(${weights[0].width}, ${weights[0].height}, ${weights[0].numberOfTextures / numFilters});
-const ivec3 biasTextureDims = ivec3(${hasBias ? weights[1].width : 0}, ${hasBias ? weights[1].height : 0}, 1);
-  
+const ivec3 singleKernelTextureDims = ivec3(${weights[0].RGBATextureShape[0]}, ${weights[0].RGBATextureShape[1]}, ${weights[0].RGBATextureShape[2] / numFilters});
+const ivec3 biasTextureDims = ivec3(${hasBias ? weights[1].RGBATextureShape[0] : 0}, ${hasBias ? weights[1].RGBATextureShape[1] : 0}, 1);
+    
 // XXX: NOTE: outputDepth MAY BE different from the number of filters.
 // This is because, when creating the output texture array, the textures are channel padded to be divisible by 4.
-const ivec3 outputDims = ivec3(${output.shape[0]}, ${output.shape[1]}, ${output.shape[2]});
-const ivec3 outputTextureArrayDims = ivec3(${output.width}, ${output.height}, ${output.numberOfTextures});
-  
+const ivec3 outputDims = ivec3(${output.originalShape[0]}, ${output.originalShape[1]}, ${output.originalShape[2]});
+const ivec3 outputTextureArrayDims = ivec3(${output.RGBATextureShape[0]}, ${output.RGBATextureShape[1]}, ${output.RGBATextureShape[2]});
+
 const ivec2 strides = ivec2(${strides[0]}, ${strides[1]});
 const ivec2 padding = ivec2(${padX}, ${padY});
 
 const int inputTextureSpatialSize = inputTextureArrayDims.x * inputTextureArrayDims.y;
 const int numFilters = ${numFilters};
+const int paddedOutputDepth = ${paddedOutputDepth};
+const int paddedInputDepth = ${paddedInputDepth};
 `;
 
   return `${fsHeader}
@@ -131,14 +137,14 @@ void main() {
   for(int x = 0; x < paddedKernelDims.x; x++) {
     ${loop(outputNumberOfTextures, (i: number) => `
     int input${i}RealX = target${i}Output0RealXYZ.x * strides.x - padding.x + x;
-    int input${i}FlatXOffset = input${i}RealX * inputDims.z;
+    int input${i}FlatXOffset = input${i}RealX * paddedInputDepth;
     bool is${i}InBoundsX = input${i}RealX >= 0 && input${i}RealX < inputDims.x;
     `)}
 
     for(int y = 0; y < paddedKernelDims.y; y++) {
       ${loop(outputNumberOfTextures, (i: number) => `
       int input${i}RealY = target${i}Output0RealXYZ.y * strides.y - padding.y + y;
-      int input${i}FlatIndex = input${i}RealY * inputDims.x * inputDims.z + input${i}FlatXOffset;
+      int input${i}FlatIndex = input${i}RealY * inputDims.x * paddedInputDepth + input${i}FlatXOffset;
       float is${i}InBounds = float(is${i}InBoundsX && input${i}RealY >= 0 && input${i}RealY < inputDims.y);
       `)}
 

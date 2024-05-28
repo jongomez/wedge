@@ -3,7 +3,7 @@ import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { createOutputTextureArray, createWeightDataTextureArray } from "../../buffersAndTextures";
 import { checkConv2DInputs, getConv2DParams, opNodeHasMissingData } from "../../helpers";
 import { biasWeightsTransform, conv2dWeightsTransform } from '../../transforms';
-import { ModelType, NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLData, OpNodeWithWebGLDataMap } from "../../types";
+import { ModelType, NNShadersOptions, NodeWebGLDataMap, WebGLOpNode, WebGLOpNodeMap } from "../../types";
 import { getWebGLDataElseNull } from "../../webGLData";
 import { getConv2DOriginalInputShape } from "../conv2D/init";
 import { updateConv2DOutputDimensions } from "../conv2D/output";
@@ -14,11 +14,11 @@ export function initDepthwiseConv2DWebGLData(
   gl: WebGL2RenderingContext,
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   weightMap: NamedTensorsMap,
   modelType: ModelType,
   options: NNShadersOptions
-): OpNodeWithWebGLData {
+): WebGLOpNode {
   checkConv2DInputs(node.inputs);
 
   const input = getWebGLDataElseNull(node.inputs[0], nodeWebGLDataMap, opNodeMap);
@@ -54,7 +54,7 @@ export function initDepthwiseConv2DWebGLData(
     weights.push(biasWeightValues);
   }
 
-  const opNodeWithWebGLData: OpNodeWithWebGLData = {
+  const webGLOpNode: WebGLOpNode = {
     node,
     inputs: [input],
     output,
@@ -64,9 +64,9 @@ export function initDepthwiseConv2DWebGLData(
     fsSource: "",
   }
 
-  if (!opNodeHasMissingData(opNodeWithWebGLData)) {
-    opNodeWithWebGLData.fsSource = depthwiseConv2DWebGLShader(opNodeWithWebGLData);
+  if (!opNodeHasMissingData(webGLOpNode)) {
+    webGLOpNode.fsSource = depthwiseConv2DWebGLShader(webGLOpNode);
   }
 
-  return opNodeWithWebGLData;
+  return webGLOpNode;
 }

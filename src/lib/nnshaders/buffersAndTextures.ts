@@ -38,7 +38,7 @@ export function initVertexShaderBuffer(gl: WebGL2RenderingContext): WebGLBuffer 
 export function updateFramebufferTextureLayer(
   gl: WebGL2RenderingContext,
   textureArrayData: WebGLDataTextureArray): void {
-  const numberOfTextures = textureArrayData.numberOfTextures;
+  const numberOfTextures = textureArrayData.RGBATextureShape[2];
 
   let attachments = [];
 
@@ -57,7 +57,7 @@ export function updateFramebufferTextureLayer(
     gl.framebufferTextureLayer(
       gl.FRAMEBUFFER,
       attachmentPoint,
-      textureArrayData.textureArray,
+      textureArrayData.texture,
       0,  // mipmap level
       layerIndex
     );
@@ -267,15 +267,11 @@ export function createWeightDataTextureArray(
   const weightTextureArray = createTextureArray(gl, width, height, RGBADepth, node.name, data);
 
   const webGLDataTextureArray: WebGLDataTextureArray = {
-    type: "sampler2DArray",
-    isOperationNode: false,
+    webGLType: "sampler2DArray",
     nodeName: node.name,
-    textureArray: weightTextureArray,
-    height,
-    width,
-    numberOfTextures: RGBADepth,
-    shape,
-    elementCount: width * height * depth,
+    texture: weightTextureArray,
+    RGBATextureShape: [width, height, RGBADepth, 4],
+    RGBATextureElementCount: width * height * RGBADepth * 4,
     uniformName,
     originalShape,
     originalElementCount: getElementCount(originalShape),
@@ -338,21 +334,17 @@ export function handleTextureUniforms(
 
   // Determine if we are handling a texture array.
   if (isWebGLDataTextureArray(webGLDataTexture)) {
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, webGLDataTexture.textureArray);
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, webGLDataTexture.texture);
     if (dataToUpdate) {
-      const width = webGLDataTexture.width;
-      const height = webGLDataTexture.height;
-      const depth = webGLDataTexture.numberOfTextures;
-
       gl.texSubImage3D(
         gl.TEXTURE_2D_ARRAY,
         0, // mip level
         0, // x offset
         0, // y offset
         0, // z offset
-        width,
-        height,
-        depth, // Depth is the total number of layers
+        webGLDataTexture.RGBATextureShape[0], // width
+        webGLDataTexture.RGBATextureShape[1], // height
+        webGLDataTexture.RGBATextureShape[2], // depth aka number of textures
         gl.RGBA, // RGBA, not RGBA32F. RGBA32F is the internal format.
         gl.FLOAT,
         dataToUpdate // dataToUpdate should contain data for all layers
@@ -362,9 +354,16 @@ export function handleTextureUniforms(
     // Handle regular 2D texture - e.g. certain weights.
     gl.bindTexture(gl.TEXTURE_2D, webGLDataTexture.texture);
     if (dataToUpdate) {
-      const width = webGLDataTexture.width;
-      const height = webGLDataTexture.height;
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.FLOAT, dataToUpdate);
+      gl.texSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        0,
+        0,
+        webGLDataTexture.RGBATextureShape[0], // width
+        webGLDataTexture.RGBATextureShape[1], // height
+        gl.RGBA,
+        gl.FLOAT,
+        dataToUpdate);
     }
   }
 
@@ -433,16 +432,12 @@ export function createOutputTextureArray(
   const lastTwoNodeNameParts = splitNodeName.slice(-2);
 
   return {
-    type: "sampler2DArray",
+    webGLType: "sampler2DArray",
     uniformName: "uOutputFrom_" + lastTwoNodeNameParts.join("_"),
-    isOperationNode: true,
-    shape: shapeWithPaddedChannels,
+    RGBATextureShape: [width, height, numRenderTargets, 4],
     nodeName,
-    width,
-    height,
-    textureArray,
-    elementCount: textureElementCount * numRenderTargets * 4,
-    numberOfTextures: numRenderTargets,
+    texture: textureArray,
+    RGBATextureElementCount: width * height * numRenderTargets * 4,
     originalShape,
     originalElementCount: outputTextureOriginalElementCount,
   };

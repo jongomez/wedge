@@ -1,14 +1,14 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
-import { NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLData, OpNodeWithWebGLDataMap } from "../../types";
+import { NNShadersOptions, NodeWebGLDataMap, WebGLOpNode, WebGLOpNodeMap } from "../../types";
 import { initSingleInputBasicWebGLData } from "../singleInputBasic/init";
 
 export function initReluWebGLData(
   gl: WebGL2RenderingContext,
   node: Node,
   nodeWebGLDataMap: NodeWebGLDataMap,
-  opNodeMap: OpNodeWithWebGLDataMap,
+  opNodeMap: WebGLOpNodeMap,
   options: NNShadersOptions
-): OpNodeWithWebGLData {
+): WebGLOpNode {
   const opNodeWithWebGLData = initSingleInputBasicWebGLData(
     gl,
     node,

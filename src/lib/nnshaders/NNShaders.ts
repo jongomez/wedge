@@ -6,7 +6,7 @@ import { defaultOptions } from './constants';
 import { createDummyInputsNamedTensorMap, createOpNodeMapPrograms, graphModelExecuteSetup, processLayersModel } from './modelHelpers';
 import { initWebGL } from './setupShadersAndWebGL';
 import { removePadChannels } from './transforms';
-import { NNShadersOptions, NodeWebGLDataMap, OpNodeWithWebGLDataMap, WebGLDataTextureArray } from './types';
+import { NNShadersOptions, NodeWebGLDataMap, WebGLDataTextureArray, WebGLOpNodeMap, WebGLOpNodeWithProgramMap } from './types';
 import { initWebGLData, updateUniformsForProgram } from './webGLData';
 
 /*
@@ -28,7 +28,8 @@ export class NNShaders {
   public frameBuffer: WebGLFramebuffer | null = null;
   public orderedNodes: Node[] = [];
   public nodeWebGLDataMap: NodeWebGLDataMap = new Map();
-  public opNodeMap: OpNodeWithWebGLDataMap = new Map();
+  public opNodeMap: WebGLOpNodeMap = new Map();
+  public opNodeWithProgramMap: WebGLOpNodeWithProgramMap = new Map();
   public inputsNamedTensorMap: NamedTensorMap = {};
   public inputTensorNames: Set<string> = new Set();
 
@@ -60,18 +61,13 @@ export class NNShaders {
   }
 
   readOutput(): Float32Array {
-    if (!this.gl) {
-      throw new Error("Error: gl is not defined.");
-    }
+    // hmmm maybe this checkFramebufferStatus call is not necessary?
+    // if (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) !== this.gl.FRAMEBUFFER_COMPLETE) {
+    //   console.error('readOutput - Framebuffer not complete');
+    //   return new Float32Array(0);
+    // }
 
-    if (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) !== this.gl.FRAMEBUFFER_COMPLETE) {
-      console.error('readOutput - Framebuffer not complete');
-      return new Float32Array(0);
-    }
-
-    let outputTexturesWidth = this.finalOutputData?.width;
-    let outputTexturesHeight = this.finalOutputData?.height;
-    let numberOfTextures = this.finalOutputData?.numberOfTextures;
+    let [outputTexturesWidth, outputTexturesHeight, numberOfTextures, _] = this.finalOutputData!.RGBATextureShape;
 
     if (!outputTexturesWidth || !outputTexturesHeight || !numberOfTextures) {
       throw new Error("Error: outputTexturesWidth, outputTexturesHeight, or numberOfTextures is not defined.");
@@ -85,7 +81,7 @@ export class NNShaders {
       this.gl.framebufferTextureLayer(
         this.gl.FRAMEBUFFER,
         this.gl.COLOR_ATTACHMENT0 + layer,
-        this.finalOutputData!.textureArray,
+        this.finalOutputData!.texture,
         0,  // mipmap level
         layer
       );
@@ -129,10 +125,9 @@ export class NNShaders {
       );
 
       // Create WebGL programs for all the operations.
-      createOpNodeMapPrograms(opNodeMap, this.gl, layersModelWeightMap);
-
       this.orderedNodes = orderedNodes;
       this.opNodeMap = opNodeMap;
+      this.opNodeWithProgramMap = createOpNodeMapPrograms(opNodeMap, this.gl, layersModelWeightMap);
       this.nodeWebGLDataMap = nodeWebGLDataMap;
       this.frameBuffer = createAndBindFramebuffer(this.gl);
       this.initialSetupComplete = true;
@@ -174,8 +169,7 @@ export class NNShaders {
       this.options);
 
     // Create WebGL programs for all the operations.
-    createOpNodeMapPrograms(opNodeMap, this.gl, this.executor.weightMap);
-
+    this.opNodeWithProgramMap = createOpNodeMapPrograms(opNodeMap, this.gl, this.executor.weightMap);
     this.opNodeMap = opNodeMap;
     this.nodeWebGLDataMap = nodeWebGLDataMap;
     this.frameBuffer = createAndBindFramebuffer(this.gl);
@@ -204,25 +198,19 @@ export class NNShaders {
     ////
     ////// Run all the WebGL programs.
     let opNodesRan = 0;
-    for (const [opNodeName, opNode] of this.opNodeMap) {
-      const programInfo = opNode.programInfo;
+    this.opNodeWithProgramMap.forEach((opNodeWithProgam, opNodeName) => {
+      this.gl.useProgram(opNodeWithProgam.programInfo.program);
 
-      if (!programInfo) {
-        throw new Error("Error: programInfo is not defined. opNodeName: " + opNodeName);
-      }
-
-      this.gl.useProgram(programInfo.program);
-
-      updateUniformsForProgram(this.gl, opNode, this.inputTensorNames, inputRawData, this.options);
-      updateFramebufferTextureLayer(this.gl, opNode.output);
+      updateUniformsForProgram(this.gl, opNodeWithProgam, this.inputTensorNames, inputRawData, this.options);
+      updateFramebufferTextureLayer(this.gl, opNodeWithProgam.opNode.output!);
 
       // There are 2 triangles that make up the square that covers the texture / canvas. 
       // 2 triangles means 6 vertices - hence the following 6:
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-      this.finalOutputData = opNode.output;
+      this.finalOutputData = opNodeWithProgam.opNode.output;
 
       opNodesRan++;
-    }
+    });
 
     // Read the output from the framebuffer
     const outputData = this.readOutput();
@@ -232,11 +220,11 @@ export class NNShaders {
     return outputData;
   }
 
-  // Original predict function:
+  // tfjs predict function:
   // https://github.com/tensorflow/tfjs/blob/master/tfjs-converter/src/executor/graph_model.ts#L357
   predict(
     inputRawData: ArrayBufferView[],
-    returnFlatArray = false): tf.Tensor | Float32Array {
+    returnFlatArray = false): Float32Array {
     let outputData: Float32Array;
 
     // Step 1 - Run the model.
@@ -255,24 +243,18 @@ export class NNShaders {
         console.log("outputData", outputData);
         return outputData;
       } else {
-        let finalOutputShape = this.finalOutputData.shape;
-
+        debugger;
         if (this.options.transformations.padChannels) {
           outputData = removePadChannels(
             outputData,
             this.finalOutputData.originalElementCount,
-            this.finalOutputData.originalShape,
-            this.finalOutputData.shape);
-
-          finalOutputShape = this.finalOutputData.originalShape;
+            this.finalOutputData.originalShape);
         }
 
         // Only get originalElementCount elements out of the outputData float32array.
         outputData = outputData.slice(0, this.finalOutputData.originalElementCount);
 
-        // Create tensor from flat array, and reshape it to the correct shape.
-        const finalResultTensor = tf.tensor(outputData, finalOutputShape);
-        return finalResultTensor;
+        return outputData;
       }
     } else {
       throw new Error("predict - error: finalOutputData is null.");

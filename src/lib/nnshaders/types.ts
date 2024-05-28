@@ -47,34 +47,34 @@ export type NNShadersOptions = {
 }
 
 export type WebGLDataBase = {
-  isOperationNode: boolean;
   nodeName: string;
   uniformName: string;
-  shape: number[];
-  originalShape: number[];
-  elementCount: number;
-  originalElementCount: number;
 };
 
 export type WebGLDataNonTexture = WebGLDataBase & {
-  type: "float" | "vec2" | "vec3" | "vec4";
+  webGLType: "float" | "vec2" | "vec3" | "vec4";
   data: number[];
 };
 
-export type WebGLDataTexture = WebGLDataBase & {
-  // Note: For now, WebGLDataTexture does not have a data field. This is because textures can be too large.
-  type: "sampler2D";
+// Note: For now, webGL textures do not have a data field. This is because textures can be too large.
+export type WebGLDataTextureBase = WebGLDataBase & {
   texture: WebGLTexture;
-  height: number;
-  width: number;
+
+  // Original dimensions:
+  originalShape: number[];
+  originalElementCount: number;
+
+  // Texture dimensions:
+  RGBATextureShape: number[];
+  RGBATextureElementCount: number;
+}
+
+export type WebGLDataTexture = WebGLDataTextureBase & {
+  webGLType: "sampler2D";
 };
 
-export type WebGLDataTextureArray = WebGLDataBase & {
-  type: "sampler2DArray";
-  textureArray: WebGLTexture; // Even though it's an array, it's still a single texture - a 3D one.
-  height: number;
-  width: number;
-  numberOfTextures: number;
+export type WebGLDataTextureArray = WebGLDataTextureBase & {
+  webGLType: "sampler2DArray";
 };
 
 export type WebGLData = WebGLDataNonTexture | WebGLDataTexture | WebGLDataTextureArray;
@@ -117,7 +117,7 @@ export type Conv2DParams = {
 export type OpParams = Conv2DParams | null;
 
 // Operation nodes have a corresponding WebGL program - with vertex and fragment shaders.
-export type OpNodeWithWebGLData = {
+export type WebGLOpNode = {
   node: Node;
   // Operations have input(s) and output(s) - and possibly weight(s).
   inputs: (WebGLData | null)[];
@@ -126,8 +126,14 @@ export type OpNodeWithWebGLData = {
   opParams: OpParams;
   type: OpName;
   fsSource: string;
-  programInfo?: ProgramInfo;
 };
+
+export type WebGLOpNodeWithProgram = {
+  opNode: WebGLOpNode;
+  programInfo: ProgramInfo;
+}
+
+export type WebGLOpNodeWithProgramMap = Map<string, WebGLOpNodeWithProgram>;
 
 // export type WebGLData = {
 //   isOperation: boolean;
@@ -136,7 +142,7 @@ export type OpNodeWithWebGLData = {
 //   scalar: number | null;
 // }
 
-export type OpNodeWithWebGLDataMap = Map<string, OpNodeWithWebGLData>;
+export type WebGLOpNodeMap = Map<string, WebGLOpNode>;
 export type NodeWebGLDataMap = Map<string, WebGLData>;
 
 export type CustomShapeUpdate = (

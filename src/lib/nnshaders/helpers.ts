@@ -1,5 +1,5 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
-import { Conv2DParams, NNShadersOptions, OpNodeWithWebGLData, WebGLData, WebGLDataNonTexture, WebGLDataTexture, WebGLDataTextureArray } from "./types";
+import { Conv2DParams, NNShadersOptions, WebGLData, WebGLDataNonTexture, WebGLDataTexture, WebGLDataTextureArray, WebGLOpNode } from "./types";
 
 export const getShapeUniformName = (nodeDataUniformName: string) => {
   return nodeDataUniformName + "Shape";
@@ -87,16 +87,16 @@ export function checkFloatTextureSupport(gl: WebGL2RenderingContext): boolean {
   return true;
 }
 
-export function isWebGLDataTextureArray(data: WebGLData): data is WebGLDataTextureArray {
-  return data.type === "sampler2DArray";
+export function isWebGLDataTextureArray(data: WebGLData | null): data is WebGLDataTextureArray {
+  return data?.webGLType === "sampler2DArray";
 }
 
-export function isWebGLDataTexture(data: WebGLData): data is WebGLDataTexture {
-  return data.type === "sampler2D";
+export function isWebGLDataTexture(data: WebGLData | null): data is WebGLDataTexture {
+  return data?.webGLType === "sampler2D";
 }
 
-export function isWebGLDataNonTexture(data: WebGLData): data is WebGLDataNonTexture {
-  return data.type !== "sampler2DArray" && data.type !== "sampler2D";
+export function isWebGLDataNonTexture(data: WebGLData | null): data is WebGLDataNonTexture {
+  return data?.webGLType === "float" || data?.webGLType === "vec2" || data?.webGLType === "vec3" || data?.webGLType === "vec4";
 }
 
 export function findRecommendedRenderTargets(
@@ -114,15 +114,15 @@ export function findRecommendedRenderTargets(
   return 1;
 }
 
-export const opNodeHasMissingInputs = (opNode: OpNodeWithWebGLData): boolean => {
+export const opNodeHasMissingInputs = (opNode: WebGLOpNode): boolean => {
   return opNode.inputs.some(input => input === null);
 }
 
-export const opNodeHasMissingOutput = (opNode: OpNodeWithWebGLData): boolean => {
+export const opNodeHasMissingOutput = (opNode: WebGLOpNode): boolean => {
   return opNode.output === null;
 }
 
-export function opNodeHasMissingData(opNode: OpNodeWithWebGLData): boolean {
+export function opNodeHasMissingData(opNode: WebGLOpNode): boolean {
   const hasMissingInputs = opNodeHasMissingInputs(opNode);
   const hasMissingOutput = opNodeHasMissingOutput(opNode);
 
