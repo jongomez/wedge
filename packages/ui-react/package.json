@@ -1,5 +1,9 @@
 {
   "name": "@wedge/ui-react",
   "version": "0.1.0",
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
   "dependencies": {}
 }

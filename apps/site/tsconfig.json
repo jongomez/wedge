@@ -23,17 +23,17 @@
     ],
     "paths": {
       "@/*": [
-        "./src/*"
+        "../shared/*"
       ]
     }
   },
   "include": [
-    "apps/site/next-env.d.ts",
+    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "apps/site/.next/types/**/*.ts"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
-    "**/node_modules"
+    "node_modules"
   ]
 }
