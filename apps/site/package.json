@@ -1,0 +1,9 @@
+{
+  "name": "@wedge/site",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@wedge/ui-react": "workspace:*",
+    "@wedge/core": "workspace:*"
+  }
+}

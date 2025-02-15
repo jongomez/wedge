@@ -1,5 +1,5 @@
 import { GraphModel } from "@tensorflow/tfjs-converter";
-import { Wedge } from "./wedge/Wedge";
+import { Wedge } from "./lib/NNShaders";
 
 export type Vector3String = {
   x: string;

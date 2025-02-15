@@ -1,5 +1,5 @@
 {
-  "name": "wedge",
+  "name": "@wedge/core",
   "version": "0.1.0",
   "private": true,
   "scripts": {

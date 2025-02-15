@@ -1,5 +1,5 @@
+import { ModelType } from "./lib/types";
 import { ModelConfig } from "./types";
-import { ModelType } from "./wedge/types";
 
 export function getModelType(modelConfig: ModelConfig): ModelType {
   const { url } = modelConfig;
