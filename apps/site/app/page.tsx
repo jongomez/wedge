@@ -54,7 +54,10 @@ export default function Home() {
         </p>
 
         <div style={styles.buttonGroup}>
-          <Link href="/tests" style={styles.primaryButton}>
+          <Link href="/model" style={styles.primaryButton}>
+            Visualize Model
+          </Link>
+          <Link href="/tests" style={styles.secondaryButton}>
             Run Tests
           </Link>
           <Link href="/classification" style={styles.secondaryButton}>
