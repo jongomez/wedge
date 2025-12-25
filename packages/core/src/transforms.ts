@@ -1,8 +1,13 @@
-import * as tf from "@tensorflow/tfjs";
-import { getElementCount } from "./buffersAndTextures";
+import * as tfOriginal from "@tensorflow/tfjs";
+import { getElementCount } from "./backends/webgl/buffersAndTextures";
 import { maxTextureDim } from "./constants";
 
-export function padChannels(tensor: tf.Tensor, nodeName: string): tf.Tensor {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tf = tfOriginal as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TFTensor = any;
+
+export function padChannels(tensor: TFTensor, nodeName: string): TFTensor {
   // Determine the shape based on whether a shape override is provided
   const originalShape = tensor.shape;
 
@@ -45,7 +50,7 @@ export function padChannels(tensor: tf.Tensor, nodeName: string): tf.Tensor {
   const numChannelsToAdd = paddedChannels - originalChannels;
 
   // Create a zero tensor for the channels to add
-  let zeros: tf.Tensor;
+  let zeros: TFTensor;
   if (is3D) {
     zeros = tf.zeros([HWCShape[0], HWCShape[1], numChannelsToAdd]);
   } else {
@@ -81,7 +86,8 @@ export function removePadChannels(
   const numChannelsToRemove = finalChannels - originalChannels;
 
   if (numChannelsToRemove === 0) {
-    return dataWithPaddedChannels;
+    // Still need to handle texture spatial padding
+    return dataWithPaddedChannels.slice(0, originalElementCount);
   }
 
   const dataWithoutPaddedChannels = new Float32Array(originalElementCount);
@@ -103,8 +109,8 @@ export function removePadChannels(
 }
 
 export const conv2dWeightsTransform = (
-  weights: tf.Tensor
-): tf.Tensor => {
+  weights: TFTensor
+): TFTensor => {
   weights = convertHWCNToNHWC(weights);
 
   // const zShapeOriginal = weights.shape[3];
@@ -179,7 +185,7 @@ export const conv2dWeightsTransform = (
 }
 
 // XXX: WARNING: The following function MODIFIES the input tensor.
-export const convertHWCNToNHWC = (weights: tf.Tensor): tf.Tensor => {
+export const convertHWCNToNHWC = (weights: TFTensor): TFTensor => {
   // Puts the number of filters dimension first (instead of last) i.e. goes from HWCN to NHWC.
   weights = weights.transpose([3, 0, 1, 2]);
   weights = padChannels(weights, "conv2dWeightsTransform_dont_know_the_node_name");
@@ -188,7 +194,7 @@ export const convertHWCNToNHWC = (weights: tf.Tensor): tf.Tensor => {
   return weights;
 }
 
-export const biasWeightsTransform = (weights: tf.Tensor): tf.Tensor => {
+export const biasWeightsTransform = (weights: TFTensor): TFTensor => {
   // Just pad with zeros so the shape is divisible by 4.
   const elementCount = getElementCount(weights.shape);
   const numZerosToAdd = 4 - (elementCount % 4);

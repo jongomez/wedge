@@ -2,6 +2,9 @@ import { WebGLOpNode } from "../backends/webgl/types";
 import { Ops } from "../ops/types";
 import { TensorBase } from "../tensor/TensorBase";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TFTensor = any;
+
 /*
 export interface GraphType {
   nodes: { [key: string]: GraphNode };

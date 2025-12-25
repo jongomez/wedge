@@ -1,10 +1,12 @@
 import { NamedTensorsMap } from "@tensorflow/tfjs-converter/dist/data/types";
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
-import { Tensor } from "@tensorflow/tfjs-core";
-import { maxTextureDim } from "./constants";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TensorType = any;
+import { maxTextureDim } from "../../constants";
 import { findRecommendedRenderTargets, isWebGLDataTextureArray } from "./helpers";
-import { getChannelPaddedShape } from "./transforms";
-import { CustomShapeUpdate, DataFormat, ProgramInfo, WebGLDataTexture, WebGLDataTextureArray, WedgeOptions } from "./types";
+import { getChannelPaddedShape } from "../../transforms";
+import { ProgramInfo, WebGLDataTexture, WebGLDataTextureArray, WedgeOptions } from "./types";
+import { CustomShapeUpdate, DataFormat } from "../../types";
 
 export function initVertexShaderBuffer(gl: WebGL2RenderingContext): WebGLBuffer {
   // Create a buffer for the square's positions.
@@ -201,7 +203,7 @@ export function createTextureArray(
 
 export function getFromWeightMap(
   weightMap: NamedTensorsMap,
-  nodeName: string): Tensor {
+  nodeName: string): TensorType {
   const weightMapValue = weightMap[nodeName];
 
   if (!weightMapValue) {
@@ -212,7 +214,7 @@ export function getFromWeightMap(
     throw new Error("Expected weight map value to be a single tensor. Node name: " + nodeName);
   }
 
-  let weightMapTensor: Tensor = weightMapValue[0];
+  let weightMapTensor: TensorType = weightMapValue[0];
 
   return weightMapTensor;
 }
@@ -224,7 +226,7 @@ export function createWeightDataTextureArray(
   uniformName: string,
   convertToTextureShape: boolean = false,
   dataFormat: DataFormat,
-  transform?: (weights: Tensor, node: Node) => Tensor): WebGLDataTextureArray {
+  transform?: (weights: TensorType, node: Node) => TensorType): WebGLDataTextureArray {
   if (node.op !== "Const") {
     throw new Error("createWeightDataTextureArray - node is not a Const node. Node name: " + node.name);
   }
@@ -358,15 +360,16 @@ export function handleTextureUniforms(
     }
   } else {
     // Handle regular 2D texture - e.g. certain weights.
-    gl.bindTexture(gl.TEXTURE_2D, webGLDataTexture.texture);
+    const texture2D = webGLDataTexture as WebGLDataTexture;
+    gl.bindTexture(gl.TEXTURE_2D, texture2D.texture);
     if (dataToUpdate) {
       gl.texSubImage2D(
         gl.TEXTURE_2D,
         0,
         0,
         0,
-        webGLDataTexture.RGBATextureShape[0], // width
-        webGLDataTexture.RGBATextureShape[1], // height
+        texture2D.RGBATextureShape[0], // width
+        texture2D.RGBATextureShape[1], // height
         gl.RGBA,
         gl.FLOAT,
         dataToUpdate);

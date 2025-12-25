@@ -20,7 +20,7 @@ export class TensorWebGL extends TensorBase {
   public readonly texture: WebGLTexture;
   public readonly RGBATextureShape: [number, number, number, number];
   public readonly RGBATextureElementCount: number;
-  public readonly webGLType: "float" | "vec2" | "vec3" | "vec4" | "sampler2D" | "sampler2DArray";
+  public readonly webGLType: "float" | "vec2" | "vec3" | "vec4" | "sampler2D" | "sampler2DArray" = "sampler2DArray";
 
   private gl: WebGL2RenderingContext;
 

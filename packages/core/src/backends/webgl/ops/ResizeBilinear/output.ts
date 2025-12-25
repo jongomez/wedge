@@ -16,19 +16,20 @@ export function getResizeBilinearOutputShape(
     return null;
   }
 
-  assert(inputShape.length === 4, "getResizeBilinearOutputShape - inputShape.length should be 4. Got: " + inputShape.length)
+  // Handle both 3D (HWC) and 4D (NHWC) input shapes
+  const is4D = inputShape.length === 4;
+  const is3D = inputShape.length === 3;
+  assert(is3D || is4D, "getResizeBilinearOutputShape - inputShape.length should be 3 or 4. Got: " + inputShape.length)
 
   let kernelWeightValues = getFromWeightMap(weightMap, node.inputs[1].name);
 
-  // I think the weights for the bilinear upsampling are the final 2d spatial dims - not 100% sure.
+  // The second input contains the target spatial dimensions [height, width]
   const outputSpatialDims = kernelWeightValues.dataSync()
 
-  // Assuming inputShape is channels last - NHWC, or [batch dim, height, width, depth]
-  // I believe the other common format is NCHW - aka channels first.
-  // Assume the batch dim was removed, so the shape should be [height, width, depth]
-  const inputWidth = inputShape[0];
-  const inputHeight = inputShape[1];
-  const numFilters = inputShape[3]
+  // Extract number of channels from input shape
+  // 4D: [batch, height, width, channels] -> channels at index 3
+  // 3D: [height, width, channels] -> channels at index 2
+  const numFilters = is4D ? inputShape[3] : inputShape[2];
 
   const outputShape = options.hasBatchDimension ? [1, outputSpatialDims[0], outputSpatialDims[1], numFilters] : [outputSpatialDims[0], outputSpatialDims[1], numFilters];
 

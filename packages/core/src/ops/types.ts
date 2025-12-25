@@ -8,7 +8,7 @@ export type Conv2DOpParams = {
   kernelY: number;
   kernelDepth: number;
   numFilters: number;
-  activation: 'relu' | null;
+  activation: 'relu' | 'linear' | null;
   hasBias: boolean;
 }
 

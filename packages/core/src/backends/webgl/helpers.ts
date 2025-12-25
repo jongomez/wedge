@@ -1,6 +1,5 @@
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
-import { Conv2DParams, ModelConfig, WebGLData, WebGLDataNonTexture, WebGLDataTexture, WebGLDataTextureArray, WebGLOpNode, WedgeOptions } from "../../types";
-import { ModelType } from "./lib/types";
+import { Conv2DParams, ModelConfig, ModelType, WebGLData, WebGLDataNonTexture, WebGLDataTexture, WebGLDataTextureArray, WebGLOpNode, WedgeOptions } from "./types";
 
 export const getShapeUniformName = (nodeDataUniformName: string) => {
   return nodeDataUniformName + "Shape";

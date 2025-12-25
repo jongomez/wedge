@@ -2,7 +2,7 @@ import { NamedTensorsMap } from "@tensorflow/tfjs-converter/dist/data/types";
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { createOutputTextureArray, createWeightDataTextureArray } from "../../buffersAndTextures";
 import { checkConv2DInputs, getConv2DParams, opNodeHasMissingData } from "../../helpers";
-import { biasWeightsTransform, conv2dWeightsTransform } from '../../transforms';
+import { biasWeightsTransform, conv2dWeightsTransform } from '../../../../transforms';
 import { ModelType, NodeWebGLDataMap, WebGLOpNode, WebGLOpNodeMap, WedgeOptions } from "../../types";
 import { getWebGLDataElseNull } from "../../webGLData";
 import { getConv2DOriginalInputShape } from "../conv2D/init";

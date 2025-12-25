@@ -1,15 +1,16 @@
 "use client";
 
-import { compareTensors, createSequentialTensor } from "@/lib/tests/testHelpers";
-import { convertShapeToTexture2DShape } from "@/lib/wedge/buffersAndTextures";
-import { defaultOptions } from "@/lib/wedge/constants";
-import { createWedge } from "@/lib/wedge/create";
-import { padChannels } from "@/lib/wedge/transforms";
-import { WedgeOptions } from "@/lib/wedge/types";
-import * as tf from '@tensorflow/tfjs';
-import { expect } from "chai";
-import React from 'react';
-import { Test, TestContainer } from "react-browser-tests";
+import { compareTensors, createSequentialTensor } from "@wedge/core/tests/testHelpers";
+import { convertShapeToTexture2DShape } from "@wedge/core/backends/webgl/buffersAndTextures";
+import { defaultOptions } from "@wedge/core/constants";
+import { createWedge } from "@wedge/core/create";
+import { padChannels } from "@wedge/core/transforms";
+import { WedgeOptions } from "@wedge/core/backends/webgl/types";
+import * as tfOriginal from '@tensorflow/tfjs';
+import { expect, Test, TestContainer } from "react-browser-tests";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tf = tfOriginal as any;
 
 const defaultOptionsWithoutBatchDim: WedgeOptions = {
   ...defaultOptions,
@@ -21,27 +22,27 @@ type DepthwiseConvLayerArgs = {
   depthMultiplier: number,
   strides: number,
   padding: "valid" | "same",
-  weights?: tf.Tensor[],
+  weights?: any[],
   kernelInitializer?: any,
   biasInitializer?: any,
 }
 
 async function predictAndCompare(
-  input: tf.SymbolicTensor,
+  input: any,
   depthwiseConvLayerArgs: DepthwiseConvLayerArgs,
   inputDimension: number,
   inputDepth: number,
   numConvLayers: number = 1,
   nnShadersOptions?: WedgeOptions) {
 
-  let result = tf.layers.depthwiseConv2d(depthwiseConvLayerArgs).apply(input) as tf.SymbolicTensor;
+  let result = tf.layers.depthwiseConv2d(depthwiseConvLayerArgs).apply(input);
 
   for (let i = 0; i < numConvLayers - 1; i++) {
-    result = tf.layers.depthwiseConv2d(depthwiseConvLayerArgs).apply(result) as tf.SymbolicTensor;
+    result = tf.layers.depthwiseConv2d(depthwiseConvLayerArgs).apply(result);
   }
 
-  // result = tf.layers.conv2d(convLayerArgs).apply(result) as tf.SymbolicTensor;
-  const model: tf.LayersModel = tf.model({ inputs: input, outputs: result });
+  // result = tf.layers.conv2d(convLayerArgs).apply(result);
+  const model = tf.model({ inputs: input, outputs: result });
 
   const nns = await createWedge(model, nnShadersOptions || defaultOptionsWithoutBatchDim);
 
@@ -52,7 +53,7 @@ async function predictAndCompare(
   // tf.print(inputTensor.squeeze([0]));
 
   // Get prediction from TensorFlow.js model
-  const tfjsPrediction = model.predict(inputTensor) as tf.Tensor;
+  const tfjsPrediction = model.predict(inputTensor);
 
   const inputShape = [inputDimension, inputDimension, inputDepth]
   const channelPaddedInput = padChannels(inputTensor, "testInput");
@@ -85,7 +86,7 @@ async function createDepthwiseConvLayerTest({
   strides = 1,
   nnShadersOptions = defaultOptionsWithoutBatchDim
 }: DepthwiseConvLayerTestArgs) {
-  const input: tf.SymbolicTensor = tf.input({ shape: [inputDimension, inputDimension, inputDepth] });
+  const input = tf.input({ shape: [inputDimension, inputDimension, inputDepth] });
 
   // XXX: Only 1 is supported for now. depthMultiplier defines how many filters to apply to each input channel.
   const depthMultiplier = 1;
@@ -97,7 +98,7 @@ async function createDepthwiseConvLayerTest({
     depthMultiplier,
   };
 
-  let kernelWeights: tf.Tensor;
+  let kernelWeights: any;
 
   if (useInitializers) {
     // Use constant initializers

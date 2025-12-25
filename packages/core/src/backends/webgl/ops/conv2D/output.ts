@@ -1,4 +1,4 @@
-import { maxTextureDim } from "@/lib/constants";
+import { maxTextureDim } from "../../../../constants";
 import { NamedTensorsMap } from "@tensorflow/tfjs-converter/dist/data/types";
 import { Node } from "@tensorflow/tfjs-converter/dist/operations/types";
 import { getFromWeightMap } from "../../buffersAndTextures";

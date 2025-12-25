@@ -1,11 +1,10 @@
 "use client";
 
-import { createWebGLContext } from "@/lib/tests/testHelpers";
-import { createOutputTextureArray } from "@/lib/wedge/buffersAndTextures";
-import { defaultOptions } from "@/lib/wedge/constants";
-import { updateConv2DOutputDimensions } from "@/lib/wedge/ops/conv2D/output";
-import { WedgeOptions } from "@/lib/wedge/types";
-import React from "react";
+import { createWebGLContext } from "@wedge/core/tests/testHelpers";
+import { createOutputTextureArray } from "@wedge/core/backends/webgl/buffersAndTextures";
+import { defaultOptions } from "@wedge/core/constants";
+import { updateConv2DOutputDimensions } from "@wedge/core/backends/webgl/ops/conv2D/output";
+import { WedgeOptions } from "@wedge/core/backends/webgl/types";
 import { Test, TestContainer, expect } from "react-browser-tests";
 
 export default function TextureSizesTests() {

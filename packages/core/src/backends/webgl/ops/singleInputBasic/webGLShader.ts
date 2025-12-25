@@ -33,7 +33,9 @@ export const singleInputBasicWebGLShader = (opNode: WebGLOpNode, operation: Sing
   // Determine the shader operation based on the operation argument
   const shaderOperation = (renderTargetNum: number) => {
     switch (operation) {
-      case 'Relu': return `max(value${renderTargetNum}, 0.0)`;  // Relu operation
+      case 'Relu': return `max(value${renderTargetNum}, 0.0)`;
+      case 'Relu6': return `clamp(value${renderTargetNum}, 0.0, 6.0)`;
+      case 'Sigmoid': return `vec4(1.0) / (vec4(1.0) + exp(-value${renderTargetNum}))`;
       default: throw new Error(`Unsupported operation: ${operation}`);
     }
   };

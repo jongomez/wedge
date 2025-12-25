@@ -1,6 +1,9 @@
-import * as tf from '@tensorflow/tfjs';
+import * as tfOriginal from '@tensorflow/tfjs';
 
-export function compareTensors(tensorA: tf.Tensor, tensorB: tf.Tensor, tolerance: number): boolean {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tf = tfOriginal as any;
+
+export function compareTensors(tensorA: any, tensorB: any, tolerance: number): boolean {
   // Ensure the shapes of the tensors are identical
   if (!tf.util.arraysEqual(tensorA.shape, tensorB.shape)) {
     console.log("Tensors have different shapes:", tensorA.shape, "vs", tensorB.shape);
@@ -38,7 +41,7 @@ export function compareTensors(tensorA: tf.Tensor, tensorB: tf.Tensor, tolerance
 }
 
 
-export function createSequentialTensor(shape: number[], start = 1): tf.Tensor {
+export function createSequentialTensor(shape: number[], start = 1): any {
   // Calculate the total number of elements in the final tensor.
   const totalElements = shape.reduce((a, b) => a * b, 1);
 

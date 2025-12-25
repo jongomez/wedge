@@ -1,11 +1,12 @@
 "use client";
 
-import { createSequentialTensor } from "@/lib/tests/testHelpers";
-import { conv2dWeightsTransform } from "@/lib/wedge/transforms";
-import * as tf from '@tensorflow/tfjs';
-import { expect } from "chai";
-import React from "react";
-import { Test, TestContainer, TestGroup } from "react-browser-tests";
+import { createSequentialTensor } from "@wedge/core/tests/testHelpers";
+import { conv2dWeightsTransform } from "@wedge/core/transforms";
+import * as tfOriginal from '@tensorflow/tfjs';
+import { expect, Test, TestContainer, TestGroup } from "react-browser-tests";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tf = tfOriginal as any;
 
 export function Conv2DWeightTransformsTests() {
   const env = process.env.NODE_ENV
