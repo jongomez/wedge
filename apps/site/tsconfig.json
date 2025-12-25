@@ -22,10 +22,12 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "../shared/*"
-      ]
-    }
+      "@/*": ["./*"],
+      "@wedge/core/*": ["../../packages/core/src/*"],
+      "@wedge/core/tests/*": ["../../packages/core/tests/*"],
+      "@wedge/ui-react/*": ["../../packages/ui-react/src/*"]
+    },
+    "target": "ES2017"
   },
   "include": [
     "next-env.d.ts",
