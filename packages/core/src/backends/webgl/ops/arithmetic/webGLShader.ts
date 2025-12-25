@@ -79,12 +79,13 @@ ${textureArrayUniform2 || floatUniform2}
 
 out mediump vec4 ${outputVarName};
 
-ivec3 convertFlatToTextureArray3D(int flatIndex, int width, int height, int textureSpatialSize) {
+ivec3 convertFlatToTextureArray3D(int flatIndex, int width, int height, int textureSpatialSize, int numLayers) {
   int textureArrayFlatIndexModulo = flatIndex % textureSpatialSize;
 
   int x = textureArrayFlatIndexModulo % width;
   int y = textureArrayFlatIndexModulo / width;
-  int z = flatIndex / textureSpatialSize;
+  // Modulo by numLayers for broadcasting support when smaller input is broadcast to larger output
+  int z = (flatIndex / textureSpatialSize) % numLayers;
 
   return ivec3(x, y, z);
 }
@@ -93,8 +94,8 @@ void main() {
   vec2 outputXY = gl_FragCoord.xy;
   int outputIndex = int(outputXY.x) + int(outputXY.y) * ${opNode.output?.RGBATextureShape[0]};
 
-  ivec3 value1XYZ = ${input1IsTextureArray ? `convertFlatToTextureArray3D(outputIndex, input1Dims.x, input1Dims.y, input1SpatialSize)` : 'ivec3(0, 0, 0)'};
-  ivec3 value2XYZ = ${input2IsTextureArray ? `convertFlatToTextureArray3D(outputIndex, input2Dims.x, input2Dims.y, input2SpatialSize)` : 'ivec3(0, 0, 0)'};
+  ivec3 value1XYZ = ${input1IsTextureArray ? `convertFlatToTextureArray3D(outputIndex, input1Dims.x, input1Dims.y, input1SpatialSize, input1Dims.z)` : 'ivec3(0, 0, 0)'};
+  ivec3 value2XYZ = ${input2IsTextureArray ? `convertFlatToTextureArray3D(outputIndex, input2Dims.x, input2Dims.y, input2SpatialSize, input2Dims.z)` : 'ivec3(0, 0, 0)'};
 
   ${input1IsTextureArray ? `vec4 value1 = texelFetch(${input1.uniformName}, value1XYZ, 0)` : `float value1 = ${input1?.uniformName}`};
   ${input2IsTextureArray ? `vec4 value2 = texelFetch(${input2.uniformName}, value2XYZ, 0)` : `float value2 = ${input2?.uniformName}`};

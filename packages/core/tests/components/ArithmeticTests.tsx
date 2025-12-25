@@ -48,7 +48,7 @@ export function ArithmeticTests() {
       expect(comparisonRes).to.equal(true);
     }} />
 
-    <Test title="TODO Scalar constant and array texture adds" skip fn={async () => {
+    <Test title="Scalar constant and array texture adds (broadcasting)" fn={async () => {
       const scalarConstant = 5;
 
       const inputHeight = 3;
@@ -75,15 +75,15 @@ export function ArithmeticTests() {
       const onesDataPaddedArray = onesDataPadded.dataSync();
 
       const constantValue = tf.fill([1], scalarConstant);
+      const constantValuePadded = padChannels(constantValue, "constantInput");
+      const constantValuePaddedArray = constantValuePadded.dataSync();
 
       // Get prediction from TensorFlow.js model
       const tfjsPrediction = model.predict([onesData, constantValue]);
 
-      // console.log("tfjsPrediction", tfjsPrediction.dataSync());
-
       const nns = await createWedge(model, defaultOptionsWithoutBatchDim);
 
-      const nnsPrediction = nns.predict([onesDataPaddedArray, new Float32Array(scalarConstant)]);
+      const nnsPrediction = nns.predict([onesDataPaddedArray, constantValuePaddedArray]);
       const nnsPredictionTensor = tf.tensor(nnsPrediction, nns.finalOutputData!.originalShape);
 
       const comparisonRes = compareTensors(tf.squeeze(tfjsPrediction, [0]), nnsPredictionTensor, 0.1);

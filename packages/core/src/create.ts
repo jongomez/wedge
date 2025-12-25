@@ -34,7 +34,11 @@ function getLayersModelInputNodes(layer: any, orderedNodes: Node[]): Node[] {
   const inputNodeNames = layer.inboundNodes.map((node: any) =>
     node.inboundLayers.map((layer: any) => layer.name)
   ).flat();
-  const inputNodes = orderedNodes.filter(node => inputNodeNames.includes(node.name));
+  // Use map+find to preserve the order of inputNodeNames (from inboundNodes),
+  // not the order of orderedNodes. This ensures inputs match the model definition order.
+  const inputNodes = inputNodeNames
+    .map((name: string) => orderedNodes.find((n: Node) => n.name === name))
+    .filter((node: Node | undefined): node is Node => node !== undefined);
   const layerClassName = layer.getClassName();
 
   if (!inputNodes.length && layerClassName !== 'InputLayer') {
@@ -58,6 +62,10 @@ function getAttrParams(layer: any): Record<string, unknown> {
   }
   if ('dilationRate' in config) {
     attrParams['dilations'] = { value: config.dilationRate };
+  }
+  if ('targetShape' in config) {
+    // For Reshape layer
+    attrParams['targetShape'] = { value: config.targetShape };
   }
 
   return attrParams;
@@ -83,7 +91,7 @@ function processLayersModel(
 
     const inputNodes = getLayersModelInputNodes(layer, orderedNodes);
     const weightNodes = getLayersModelWeightNodes(weightTensors, layerName);
-    const opName = mapLayerClassesToOpName(layer.getClassName());
+    const opName = mapLayerClassesToOpName(layer.getClassName(), layer.getConfig());
     const attrParams = getAttrParams(layer);
 
     const finalInputNodes: Node[] = inputNodes.concat(weightNodes);
