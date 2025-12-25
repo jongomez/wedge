@@ -1,5 +1,4 @@
 import { WebGLOpNode } from "../backends/webgl/types";
-import { ParamType, ValueType } from "../external/tensorflow/types";
 import { Ops } from "../ops/types";
 import { TensorBase } from "../tensor/TensorBase";
 
