@@ -1,7 +1,6 @@
 # Wedge
 
-Wedge is an alternative runtime for running and building machine learning models
-in web browsers.
+Wedge is a web based machine learning framework.
 
 ## What This Project Currently Does
 
